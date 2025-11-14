@@ -21,12 +21,23 @@ function App() {
     setLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_BASE_URL}/api/scan/${address}`);
+      // Use relative path for Render; fallback to env for local dev
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '';
+      const response = await fetch(`${apiBase}/api/scan/${address}`);
+
+      if (!response.ok) {
+        throw new Error(`Scan request failed with status ${response.status}`);
+      }
+
       const data = await response.json();
       setScanResult(data);
+      console.log('Scan result:', data); // ✅ logs result for debugging
     } catch (err) {
-      console.error(err);
-      setScanResult({ found: false, message: 'Failed to scan token. Please try again.' });
+      console.error('Scan failed:', err);
+      setScanResult({
+        found: false,
+        message: 'Failed to scan token. Please try again.',
+      });
     } finally {
       setLoading(false);
     }
