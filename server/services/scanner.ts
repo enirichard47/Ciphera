@@ -1,4 +1,22 @@
-import fetch from 'node-fetch';
+interface DexScreenerPair {
+  baseToken: {
+    symbol?: string;
+    name?: string;
+  };
+  priceUsd?: string;
+  liquidity?: { usd?: number };
+  volume?: { h24?: number };
+  fdv?: number;
+  marketCap?: number;
+  priceChange?: { h1?: number; h24?: number; m5?: number };
+  pairAddress: string;
+  chainId: string;
+  txns?: { h24?: { buys?: number; sells?: number } };
+}
+
+interface DexScreenerResponse {
+  pairs: DexScreenerPair[];
+}
 
 interface DexScreenerToken {
   symbol: string;
@@ -27,23 +45,19 @@ interface ScanResult {
   message?: string;
 }
 
-/**
- * Scan token by address. Chain detection is automatic.
- */
 export async function scanToken(address: string): Promise<ScanResult> {
   const supportedChains = ['ethereum', 'bsc', 'polygon', 'avalanche', 'fantom'];
 
   for (const chain of supportedChains) {
-    // Query by token address first
     const url = `https://api.dexscreener.com/latest/dex/tokens/${address}`;
     try {
       const res = await fetch(url);
-      const data = await res.json();
+const data = (await res.json()) as DexScreenerResponse;
 
       if (data.pairs && data.pairs.length > 0) {
-        // Find the pair with highest liquidity
-        const pair = data.pairs.reduce((best: any, current: any) => 
-          (current.liquidity?.usd || 0) > (best.liquidity?.usd || 0) ? current : best
+        const pair = data.pairs.reduce(
+          (best, current) =>
+            (current.liquidity?.usd || 0) > (best.liquidity?.usd || 0) ? current : best
         );
 
         const token: DexScreenerToken = {
@@ -58,7 +72,8 @@ export async function scanToken(address: string): Promise<ScanResult> {
           priceChange5m: pair.priceChange?.m5 || 0,
           pairAddress: pair.pairAddress,
           chain: pair.chainId,
-          transactions: pair.txns?.h24?.buys + pair.txns?.h24?.sells || 0,
+          transactions:
+            (pair.txns?.h24?.buys || 0) + (pair.txns?.h24?.sells || 0),
           dexUrl: `https://dexscreener.com/${pair.chainId}/${pair.pairAddress}`,
         };
 
@@ -71,41 +86,36 @@ export async function scanToken(address: string): Promise<ScanResult> {
     }
   }
 
-  return { found: false, message: "Token has no trading pair. It might be new or not listed on supported DEXs." };
+  return {
+    found: false,
+    message: "Token has no trading pair. It might be new or not listed on supported DEXs."
+  };
 }
 
-/**
- * Simple AI Risk Analysis
- */
 function analyzeToken(token: DexScreenerToken) {
   let score = 100;
-  
-  // Liquidity check - most important
+
   if (token.liquidityUsd < 1000) score -= 50;
   else if (token.liquidityUsd < 5000) score -= 40;
   else if (token.liquidityUsd < 10000) score -= 20;
   else if (token.liquidityUsd < 50000) score -= 10;
-  
-  // Volume check
+
   if (token.volumeUsd < 1000) score -= 30;
   else if (token.volumeUsd < 5000) score -= 20;
   else if (token.volumeUsd < 20000) score -= 10;
-  
-  // Transaction activity
+
   if (token.transactions < 10) score -= 40;
   else if (token.transactions < 50) score -= 30;
   else if (token.transactions < 100) score -= 15;
-  
-  // Market cap check
+
   if (token.marketCapUsd < 10000) score -= 20;
   else if (token.marketCapUsd < 100000) score -= 10;
-  
-  // Price stability (smaller changes = more stable)
+
   const priceVolatility = Math.abs(token.priceChange24h);
   if (priceVolatility > 50) score -= 20;
   else if (priceVolatility > 30) score -= 15;
   else if (priceVolatility > 15) score -= 10;
-  
+
   score = Math.max(score, 0);
   score = Math.min(score, 100);
 
