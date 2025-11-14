@@ -34,16 +34,19 @@ try {
 
 app.use(express.static(frontendDist));
 
-// SPA catch-all route
-app.get(/^\/(?!api).*/, (req, res) => {
-  const indexPath = path.join(frontendDist, 'index.html');
-  console.log('Serving index.html from:', indexPath); // ✅ log the index.html path
-  res.sendFile(indexPath, (err) => {
-    if (err) {
-      console.error('Error sending index.html:', err);
-      res.status(500).send('Something went wrong');
-    }
-  });
+// ✅ Safe SPA catch-all route (works on Render)
+app.use((req, res, next) => {
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    const indexPath = path.join(frontendDist, 'index.html');
+    console.log('Serving index.html from:', indexPath);
+    return res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error sending index.html:', err);
+        res.status(500).send('Something went wrong');
+      }
+    });
+  }
+  next(); // Pass to next middleware for API routes
 });
 
 // Start server
