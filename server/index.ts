@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
-import scanRoutes from './routes/scan.js'; // Make sure .js here if using ES modules
+import scanRoutes from './routes/scan.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -13,22 +13,25 @@ app.use(express.json());
 // API routes
 app.use('/api/scan', scanRoutes);
 
-// Serve frontend (Vite build output)
+// ---- Serve Frontend Build ----
+
+// Important: works both locally & on Render
 const __dirname = path.resolve();
 const frontendDist = path.join(__dirname, '../dist');
+
+// Serve static files
 app.use(express.static(frontendDist));
 
-// SPA catch-all for React routes (everything not starting with /api)
+// Catch-all for React Router (Express 5 safe)
 app.use((req, res, next) => {
   if (req.method === 'GET' && !req.path.startsWith('/api')) {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  } else {
-    next();
+    return res.sendFile(path.join(frontendDist, 'index.html'));
   }
+  next();
 });
 
-// Optional: handle 404 for unknown API routes
-app.use('/api/', (req, res) => {
+// 404 handler for API only (no wildcard!)
+app.use('/api', (req, res) => {
   res.status(404).json({ message: 'API route not found' });
 });
 
