@@ -10,7 +10,7 @@ router.get('/:address', async (req, res) => {
     const result = await scanToken(address);
     res.json(result);
   } catch (err) {
-    res.status(500).json({ message: 'Scan failed', error: err });
+    res.status(500).json({ message: 'Scan failed', error: (err as Error).message });
   }
 });
 
