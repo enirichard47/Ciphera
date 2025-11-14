@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import fs from 'fs';
 import scanRoutes from './routes/scan.js';
 
 const app = express();
@@ -19,12 +20,24 @@ app.use(express.json());
 app.use('/api/scan', scanRoutes);
 
 // Serve frontend
-const frontendDist = path.join(__dirname, 'dist'); // adjust if your dist folder is elsewhere
+const frontendDist = path.resolve(__dirname, '../'); // <-- points to dist folder
+
+// ✅ Console logs
+console.log('Frontend dist folder absolute path:', frontendDist);
+
+try {
+  const files = fs.readdirSync(frontendDist);
+  console.log('Files in frontendDist:', files); // Should include index.html
+} catch (err) {
+  console.error('Error reading frontendDist folder:', err);
+}
+
 app.use(express.static(frontendDist));
 
-// Catch-all SPA route for React
+// SPA catch-all route
 app.get(/^\/(?!api).*/, (req, res) => {
   const indexPath = path.join(frontendDist, 'index.html');
+  console.log('Serving index.html from:', indexPath); // ✅ log the index.html path
   res.sendFile(indexPath, (err) => {
     if (err) {
       console.error('Error sending index.html:', err);
