@@ -1,5 +1,5 @@
 import express from 'express';
-import { scanToken } from '../services/scanner';
+import { scanToken } from '../services/scanner.js';
 
 const router = express.Router();
 
