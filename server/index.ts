@@ -19,13 +19,12 @@ const __dirname = path.resolve();
 const frontendDist = path.join(__dirname, '..'); 
 app.use(express.static(frontendDist));
 
-// Catch-all SPA route for React (everything not starting with /api)
-app.get('*', (req, res) => {
-  if (!req.path.startsWith('/api')) {
-    res.sendFile(path.join(frontendDist, 'index.html'));
-  } else {
-    res.status(404).json({ message: 'API route not found' });
+// SPA catch-all for React Router
+app.use((req, res, next) => {
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    return res.sendFile(path.join(frontendDist, 'index.html'));
   }
+  next();
 });
 
 // Start server
